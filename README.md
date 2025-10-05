@@ -36,4 +36,4 @@ Traditional SAN security suffers from:
 - **Visual Security Mapping**: Graphical representation of SAN topology
 - **Comprehensive Reporting**: Detailed security analysis and threat reports
 
-## 🏗️ Architecture
+
