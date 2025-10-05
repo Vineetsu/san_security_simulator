@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - SAN Security</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>🔒 SAN Security Simulator</h1>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/zones">Zones</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <h2>Security Dashboard</h2>
+        
+        <div class="status-board">
+            <div class="status-card threat-{{ threat_level|lower }}">
+                <h3>Threat Level</h3>
+                <div class="status-value">{{ threat_level }}</div>
+                <p>{{ threat_message }}</p>
+            </div>
+            
+            <div class="status-card">
+                <h3>Emergency Mode</h3>
+                <div class="status-value {% if emergency_mode %}emergency{% else %}normal{% endif %}">
+                    {{ "ACTIVE" if emergency_mode else "INACTIVE" }}
+                </div>
+                <button id="emergencyBtn" class="emergency-btn">
+                    {{ "Deactivate" if emergency_mode else "Activate" }} Emergency
+                </button>
+            </div>
+            
+            <div class="status-card">
+                <h3>Devices</h3>
+                <div class="status-value">{{ total_devices }}</div>
+                <p>Total in SAN</p>
+            </div>
+            
+            <div class="status-card">
+                <h3>Security Zones</h3>
+                <div class="status-value">{{ total_zones }}</div>
+                <p>Active zones</p>
+            </div>
+        </div>
+
+        <div class="dashboard-grid">
+            <div class="dashboard-card">
+                <h3>Recent Access Log</h3>
+                <div class="access-log" id="accessLog">
+                    <p>Loading access log...</p>
+                </div>
+            </div>
+            
+            <div class="dashboard-card">
+                <h3>Security Analytics</h3>
+                <button id="reportBtn" class="report-btn">Generate Security Report</button>
+                <div class="report-container">
+                    <div id="securityReport">Click button to generate report</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="quick-test">
+            <h3>Quick Access Test</h3>
+            <form id="dashboardAccessForm">
+                <select id="dashboardInitiator" required>
+                    <option value="">Select Initiator</option>
+                    <option value="CEO_Workstation">CEO Workstation</option>
+                    <option value="DB_Server_01">DB Server 01</option>
+                    <option value="Web_Server_01">Web Server 01</option>
+                    <option value="Backup_Server">Backup Server</option>
+                    <option value="Admin_Workstation">Admin Workstation</option>
+                </select>
+                
+                <select id="dashboardTarget" required>
+                    <option value="">Select Target</option>
+                    <option value="Financial_DB">Financial Database</option>
+                    <option value="HR_DB">HR Database</option>
+                    <option value="File_Share">File Share</option>
+                </select>
+                
+                <button type="submit" id="dashboardTestBtn">Test Access</button>
+            </form>
+            <div id="dashboardResult" style="display: none;"></div>
+        </div>
+
+        <div id="emergency-demo" style="background: #fff3cd; border: 2px solid #ffeaa7; padding: 1rem; border-radius: 8px; margin-top: 2rem;">
+            <h4 style="color: #856404; margin-bottom: 0.5rem;">🚨 Emergency Mode Demonstration</h4>
+            <p style="margin-bottom: 0.5rem;"><strong>To test Emergency Mode:</strong></p>
+            <ol style="margin-left: 1.5rem; margin-bottom: 0.5rem;">
+                <li>Click "Activate Emergency" button above</li>
+                <li>Try: <strong>Admin_Workstation → Financial_DB</strong> (will work during emergency)</li>
+                <li>Try: <strong>Web_Server_01 → Financial_DB</strong> (will still fail - zones still enforced)</li>
+                <li>Click "Deactivate Emergency" to return to normal</li>
+            </ol>
+            <p style="margin: 0; font-size: 0.9rem; color: #666;"><strong>Note:</strong> Emergency mode only grants Admin_Workstation full access. Other servers still follow zone rules.</p>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loaded');
+            
+            // Initialize access log
+            loadAccessLog();
+            setInterval(loadAccessLog, 3000);
+            
+            // Form handling
+            const form = document.getElementById('dashboardAccessForm');
+            const resultDiv = document.getElementById('dashboardResult');
+            
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    console.log('Dashboard form submitted');
+                    
+                    const initiator = document.getElementById('dashboardInitiator').value;
+                    const target = document.getElementById('dashboardTarget').value;
+                    const button = document.getElementById('dashboardTestBtn');
+                    
+                    if (!initiator || !target) {
+                        alert('Please select both initiator and target');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    button.textContent = 'Testing...';
+                    button.disabled = true;
+                    
+                    try {
+                        const response = await fetch('/api/request_access', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                initiator: initiator,
+                                target: target,
+                                access_type: 'read'
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        console.log('Server response:', result);
+                        
+                        // Display result
+                        if (result.granted) {
+                            resultDiv.className = 'access-granted';
+                            resultDiv.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">✅</span>
+                                    <div>
+                                        <strong style="font-size: 16px;">ACCESS GRANTED</strong><br>
+                                        <span style="font-size: 14px;">${result.message}</span><br>
+                                        <small>${new Date(result.timestamp).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            resultDiv.className = 'access-denied';
+                            resultDiv.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">❌</span>
+                                    <div>
+                                        <strong style="font-size: 16px;">ACCESS DENIED</strong><br>
+                                        <span style="font-size: 14px;">${result.message}</span><br>
+                                        <small>${new Date(result.timestamp).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        resultDiv.style.display = 'block';
+                        
+                        // Refresh access log after a short delay
+                        setTimeout(loadAccessLog, 500);
+                        
+                    } catch (error) {
+                        console.error('Access test failed:', error);
+                        resultDiv.className = 'access-denied';
+                        resultDiv.innerHTML = `❌ <strong>ERROR</strong><br>Failed to test access: ${error}`;
+                        resultDiv.style.display = 'block';
+                    } finally {
+                        // Reset button
+                        button.textContent = 'Test Access';
+                        button.disabled = false;
+                    }
+                });
+            }
+            
+            // Emergency mode button
+            const emergencyBtn = document.getElementById('emergencyBtn');
+            if (emergencyBtn) {
+                emergencyBtn.addEventListener('click', toggleEmergencyMode);
+            }
+            
+            // Report button
+            const reportBtn = document.getElementById('reportBtn');
+            if (reportBtn) {
+                reportBtn.addEventListener('click', loadSecurityReport);
+            }
+        });
+        
+        // Load access log
+        async function loadAccessLog() {
+            try {
+                const response = await fetch('/api/access_log');
+                const logs = await response.json();
+                
+                const logContainer = document.getElementById('accessLog');
+                if (logContainer) {
+                    if (logs.length === 0) {
+                        logContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 2rem;">No access attempts yet. Try testing some access requests!</p>';
+                        return;
+                    }
+                    
+                    logContainer.innerHTML = logs.reverse().map(log => {
+                        const timestamp = new Date(log.timestamp).toLocaleTimeString();
+                        const emergencyBadge = log.emergency_mode ? ' <span style="background: #e74c3c; color: white; padding: 0.2rem 0.5rem; border-radius: 12px; font-size: 0.7rem; margin-left: 0.5rem; font-weight: bold;">EMERGENCY</span>' : '';
+                        
+                        return `
+                            <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 8px; background: white; border-left: 4px solid ${log.granted ? '#27ae60' : '#e74c3c'};">
+                                <div style="font-size: 0.8rem; color: #666; min-width: 80px; font-family: monospace;">${timestamp}</div>
+                                <div style="flex: 1; margin: 0 1rem;">
+                                    <strong>${log.initiator}</strong> → <strong>${log.target}</strong>
+                                    <div style="font-size: 0.8rem; color: #888; margin-top: 0.25rem;">${log.reason}${emergencyBadge}</div>
+                                </div>
+                                <div style="font-size: 1.2rem; color: ${log.granted ? '#27ae60' : '#e74c3c'}">
+                                    ${log.granted ? '✅' : '❌'}
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                }
+            } catch (error) {
+                console.error('Error loading access log:', error);
+            }
+        }
+        
+        // Toggle emergency mode
+        async function toggleEmergencyMode() {
+            const currentMode = document.getElementById('emergencyBtn').textContent.includes('Activate');
+            
+            if (currentMode && !confirm('⚠️ Are you sure you want to activate EMERGENCY MODE? This will grant Admin full access to all zones.')) {
+                return;
+            }
+            
+            try {
+                const button = document.getElementById('emergencyBtn');
+                button.textContent = 'Loading...';
+                button.disabled = true;
+                
+                const response = await fetch('/api/emergency_mode', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        activate: currentMode
+                    })
+                });
+                
+                const result = await response.json();
+                
+                // Update display
+                const statusElement = document.querySelector('.status-value.emergency, .status-value.normal');
+                if (statusElement) {
+                    statusElement.textContent = result.emergency_mode ? 'ACTIVE' : 'INACTIVE';
+                    statusElement.className = result.emergency_mode ? 'status-value emergency' : 'status-value normal';
+                }
+                
+                button.textContent = result.emergency_mode ? 'Deactivate Emergency' : 'Activate Emergency';
+                button.disabled = false;
+                
+                alert(`🛡️ EMERGENCY MODE ${result.emergency_mode ? 'ACTIVATED' : 'DEACTIVATED'}\n\n${result.message}`);
+                
+                // Refresh access log
+                setTimeout(loadAccessLog, 1000);
+                
+            } catch (error) {
+                alert('Error toggling emergency mode: ' + error);
+                const button = document.getElementById('emergencyBtn');
+                button.textContent = currentMode ? 'Activate Emergency' : 'Deactivate Emergency';
+                button.disabled = false;
+            }
+        }
+        
+        // Load security report
+        async function loadSecurityReport() {
+            try {
+                const reportContainer = document.getElementById('securityReport');
+                if (reportContainer) {
+                    reportContainer.innerHTML = '<div style="text-align: center; padding: 2rem;"><em>🔍 Generating security report... Please wait</em></div>';
+                }
+                
+                const response = await fetch('/api/security_report');
+                const data = await response.json();
+                
+                if (reportContainer) {
+                    reportContainer.innerHTML = `
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 0.5rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">📊 Security Report</h4>
+                            <div style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; white-space: pre-wrap; background: white; padding: 1rem; border-radius: 4px; border: 1px solid #e0e0e0;">${data.report.replace(/\n/g, '<br>')}</div>
+                        </div>
+                        <div style="margin-bottom: 1.5rem; padding: 1rem; background: #f8f9fa; border-radius: 8px;">
+                            <h4 style="color: #2c3e50; margin-bottom: 0.5rem; border-bottom: 2px solid #3498db; padding-bottom: 0.5rem;">🔍 Pattern Analysis</h4>
+                            <div style="font-family: monospace; font-size: 0.85rem; line-height: 1.4; white-space: pre-wrap; background: white; padding: 1rem; border-radius: 4px; border: 1px solid #e0e0e0;">${data.analysis.replace(/\n/g, '<br>').replace(/⚠️/g, '⚠️')}</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                const reportContainer = document.getElementById('securityReport');
+                if (reportContainer) {
+                    reportContainer.innerHTML = `<div style="color: red; text-align: center; padding: 1rem;">Error generating report: ${error}</div>`;
+                }
+            }
+        }
+    </script>
+</body>
+</html>

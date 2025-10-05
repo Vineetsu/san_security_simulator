@@ -1,0 +1,40 @@
+{
+  "zones": {
+    "executive_zone": {
+      "members": ["CEO_Workstation", "CFO_Workstation", "Financial_DB", "Admin_Workstation"],
+      "risk_level": "high",
+      "work_schedule": "24x7"
+    },
+    "database_zone": {
+      "members": ["DB_Server_01", "DB_Server_02", "Financial_DB", "HR_DB"],
+      "risk_level": "medium",
+      "work_schedule": "business_hours"
+    },
+    "backup_zone": {
+      "members": ["Backup_Server", "Tape_Library", "Financial_DB", "HR_DB", "File_Share"],
+      "risk_level": "low",
+      "work_schedule": "off_hours"
+    },
+    "web_zone": {
+      "members": ["Web_Server_01", "Web_Server_02", "File_Share"],
+      "risk_level": "medium",
+      "work_schedule": "business_hours"
+    },
+    "hr_zone": {
+      "members": ["HR_Workstation", "HR_DB"],
+      "risk_level": "high",
+      "work_schedule": "business_hours"
+    }
+  },
+  "storage_units": {
+    "Financial_DB": {"size_gb": 500, "type": "SSD", "sensitivity": "high"},
+    "HR_DB": {"size_gb": 200, "type": "SSD", "sensitivity": "high"},
+    "File_Share": {"size_gb": 1000, "type": "HDD", "sensitivity": "medium"},
+    "Tape_Library": {"size_gb": 5000, "type": "TAPE", "sensitivity": "low"}
+  },
+  "security_rules": {
+    "business_hours": {"start": "09:00", "end": "17:00"},
+    "emergency_timeout": 30,
+    "max_access_attempts": 10
+  }
+}

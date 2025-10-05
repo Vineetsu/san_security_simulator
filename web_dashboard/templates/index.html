@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SAN Security Simulator</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <nav>
+        <h1>🔒 SAN Security Simulator</h1>
+        <ul>
+            <li><a href="/">Home</a></li>
+            <li><a href="/dashboard">Dashboard</a></li>
+            <li><a href="/zones">Zones</a></li>
+        </ul>
+    </nav>
+
+    <div class="container">
+        <div class="hero">
+            <h2>Welcome to SAN Security Simulator</h2>
+            <p>Intelligent Storage Area Network security with adaptive zoning and threat detection</p>
+        </div>
+        
+        <div class="quick-actions">
+            <h3>Quick Access Test</h3>
+            <form id="accessForm">
+                <div class="form-group">
+                    <label for="initiator">Initiator:</label>
+                    <select id="initiator" required>
+                        <option value="">Select Initiator</option>
+                        <option value="CEO_Workstation">CEO Workstation</option>
+                        <option value="CFO_Workstation">CFO Workstation</option>
+                        <option value="DB_Server_01">DB Server 01</option>
+                        <option value="Web_Server_01">Web Server 01</option>
+                        <option value="Backup_Server">Backup Server</option>
+                        <option value="HR_Workstation">HR Workstation</option>
+                        <option value="Admin_Workstation">Admin Workstation</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="target">Target Storage:</label>
+                    <select id="target" required>
+                        <option value="">Select Target</option>
+                        <option value="Financial_DB">Financial Database</option>
+                        <option value="HR_DB">HR Database</option>
+                        <option value="File_Share">File Share</option>
+                        <option value="Tape_Library">Tape Library</option>
+                    </select>
+                </div>
+                
+                <button type="submit" id="testAccessBtn">Test Access</button>
+            </form>
+            <div id="result" style="display: none;"></div>
+        </div>
+
+        <div class="demo-scenarios">
+            <h3>Demo Scenarios to Try</h3>
+            <div class="scenario-grid">
+                <div class="scenario-card">
+                    <h4>✅ Normal Access</h4>
+                    <p><strong>CEO_Workstation → Financial_DB</strong><br>Should work (same zone)</p>
+                </div>
+                <div class="scenario-card">
+                    <h4>❌ Cross-Zone Denied</h4>
+                    <p><strong>Web_Server_01 → Financial_DB</strong><br>Should fail (different zones)</p>
+                </div>
+                <div class="scenario-card">
+                    <h4>⏰ Time-Based</h4>
+                    <p><strong>Backup_Server → Financial_DB</strong><br>Depends on current time</p>
+                </div>
+                <div class="scenario-card">
+                    <h4>🚨 Emergency Mode</h4>
+                    <p><strong>Go to Dashboard</strong><br>Test Admin access during emergencies</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="features">
+            <h3>Key Features</h3>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h4>Dynamic Zoning</h4>
+                    <p>Adaptive security zones based on behavior and time</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Threat Detection</h4>
+                    <p>AI-powered anomaly detection and behavioral analysis</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Emergency Protocols</h4>
+                    <p>Intelligent emergency access with security controls</p>
+                </div>
+                <div class="feature-card">
+                    <h4>Real-time Monitoring</h4>
+                    <p>Live dashboard with security analytics and reporting</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Home page specific JavaScript
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Home page loaded');
+            
+            const form = document.getElementById('accessForm');
+            const resultDiv = document.getElementById('result');
+            
+            if (form) {
+                form.addEventListener('submit', async function(e) {
+                    e.preventDefault();
+                    console.log('Home form submitted');
+                    
+                    const initiator = document.getElementById('initiator').value;
+                    const target = document.getElementById('target').value;
+                    const button = document.getElementById('testAccessBtn');
+                    
+                    if (!initiator || !target) {
+                        alert('Please select both initiator and target');
+                        return;
+                    }
+                    
+                    // Show loading state
+                    button.textContent = 'Testing...';
+                    button.disabled = true;
+                    
+                    try {
+                        const response = await fetch('/api/request_access', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                initiator: initiator,
+                                target: target,
+                                access_type: 'read'
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        console.log('Server response:', result);
+                        
+                        // Display result
+                        if (result.granted) {
+                            resultDiv.className = 'access-granted';
+                            resultDiv.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">✅</span>
+                                    <div>
+                                        <strong style="font-size: 16px;">ACCESS GRANTED</strong><br>
+                                        <span style="font-size: 14px;">${result.message}</span><br>
+                                        <small>${new Date(result.timestamp).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            `;
+                        } else {
+                            resultDiv.className = 'access-denied';
+                            resultDiv.innerHTML = `
+                                <div style="display: flex; align-items: center; gap: 10px;">
+                                    <span style="font-size: 24px;">❌</span>
+                                    <div>
+                                        <strong style="font-size: 16px;">ACCESS DENIED</strong><br>
+                                        <span style="font-size: 14px;">${result.message}</span><br>
+                                        <small>${new Date(result.timestamp).toLocaleString()}</small>
+                                    </div>
+                                </div>
+                            `;
+                        }
+                        
+                        resultDiv.style.display = 'block';
+                        
+                    } catch (error) {
+                        console.error('Access test failed:', error);
+                        resultDiv.className = 'access-denied';
+                        resultDiv.innerHTML = `❌ <strong>ERROR</strong><br>Failed to test access: ${error}`;
+                        resultDiv.style.display = 'block';
+                    } finally {
+                        // Reset button
+                        button.textContent = 'Test Access';
+                        button.disabled = false;
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+</html>
